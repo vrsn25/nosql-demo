@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Firebase Form</title>
+<style>
+body {
+font-family: 'Inter', sans-serif;
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: center;
+min-height: 100vh;
+background-color: #f0f2f5;
+margin: 0;
+padding: 20px;
+box-sizing: border-box;
+}
+h1 {
+color: #333;
+margin-bottom: 30px;
+font-size: 2.5em;
+text-align: center;
+}
+form {
+background-color: #ffffff;
+padding: 40px;
+border-radius: 15px;
+box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+display: flex;
+flex-direction: column;
+gap: 20px;
+width: 100%;
+max-width: 450px;
+box-sizing: border-box;
+}
+label {
+font-size: 1.1em;
+color: #555;
+display: flex;
+flex-direction: column;
+gap: 8px;
+}
+input[type="text"],
+input[type="email"],
+input[type="date"],
+textarea {
+padding: 12px 15px;
+border: 1px solid #ccc;
+border-radius: 8px;
+font-size: 1em;
+width: 100%;
+box-sizing: border-box;
+transition: border-color 0.3s ease;
+font-family: 'Inter', sans-serif;
+}
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="date"]:focus,
+textarea:focus {
+border-color: #007bff;
+outline: none;
+box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+textarea {
+resize: vertical;
+min-height: 80px;
+}
+button {
+background-color: #007bff;
+color: white;
+padding: 15px 25px;
+border: none;
+border-radius: 10px;
+font-size: 1.2em;
+cursor: pointer;
+transition: background-color 0.3s ease, transform 0.2s ease;
+box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3);
+}
+button:hover {
+background-color: #0056b3;
+transform: translateY(-2px);
+}
+button:active {
+transform: translateY(0);
+box-shadow: 0 2px 5px rgba(0, 123, 255, 0.3);
+}
+button:disabled {
+background-color: #6c757d;
+cursor: not-allowed;
+transform: none;
+}
+
+.modal-overlay {
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background: rgba(0, 0, 0, 0.6);
+display: flex;
+justify-content: center;
+align-items: center;
+z-index: 1000;
+opacity: 0;
+visibility: hidden;
+transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+.modal-overlay.visible {
+opacity: 1;
+visibility: visible;
+}
+.modal-content {
+background: white;
+padding: 30px;
+border-radius: 10px;
+box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+text-align: center;
+max-width: 400px;
+width: 90%;
+transform: translateY(-20px);
+transition: transform 0.3s ease;
+}
+.modal-overlay.visible .modal-content {
+transform: translateY(0);
+}
+.modal-content h2 {
+margin-top: 0;
+color: #333;
+}
+.modal-content p {
+margin-bottom: 20px;
+color: #666;
+}
+.modal-content button {
+background-color: #007bff;
+color: white;
+padding: 10px 20px;
+border: none;
+border-radius: 5px;
+cursor: pointer;
+font-size: 1em;
+}
+.modal-content button:hover {
+background-color: #0056b3;
+}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+<h1>Submit Your Info</h1>
+<form id="userForm">
+<label>Name: <input type="text" name="name" required></label>
+<label>Email: <input type="email" name="email" required></label>
+<label>Address: <textarea name="address" rows="3" placeholder="Enter your full address" required></textarea></label>
+<label>Date of Birth: <input type="date" name="dateOfBirth" required></label>
+<button type="submit" id="submitBtn">Submit</button>
+</form>
+
+<div id="customAlertModal" class="modal-overlay">
+<div class="modal-content">
+<h2 id="modalTitle"></h2>
+<p id="modalMessage"></p>
+<button id="modalCloseButton">OK</button>
+</div>
+</div>
+
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getFirestore, collection, addDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCBbDuq19f86dcZHeFino1DVt4DicGNn4",
+  authDomain: "userdb-8d96f.firebaseapp.com",
+  databaseURL: "https://userdb-8d96f-default-rtdb.firebaseio.com",
+  projectId: "userdb-8d96f",
+  storageBucket: "userdb-8d96f.firebasestorage.app",
+  messagingSenderId: "929978294407",
+  appId: "1:929978294407:web:76cd4d2b5de3c0f479072a"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+function showCustomAlert(title, message) {
+  const modal = document.getElementById('customAlertModal');
+  document.getElementById('modalTitle').innerText = title;
+  document.getElementById('modalMessage').innerText = message;
+  modal.classList.add('visible');
+}
+
+document.getElementById('modalCloseButton').addEventListener('click', () => {
+  document.getElementById('customAlertModal').classList.remove('visible');
+});
+
+const form = document.getElementById('userForm');
+const submitBtn = document.getElementById('submitBtn');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Submitting...';
+  
+  const formData = new FormData(form);
+  const data = {
+    name: formData.get('name'),
+    email: formData.get('email'),
+    address: formData.get('address'),
+    dateOfBirth: formData.get('dateOfBirth'),
+    timestamp: new Date().toISOString()
+  };
+  
+  try {
+    const docRef = await addDoc(collection(db, 'users'), data);
+    console.log('Document written with ID: ', docRef.id);
+    
+    showCustomAlert('✅ Success!', 'Data successfully saved to Firestore!');
+    form.reset();
+    
+  } catch (error) {
+    console.error('Error adding document: ', error);
+    showCustomAlert('❌ Error!', 'Failed to save data: ' + error.message);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Submit';
+  }
+});
+
+window.showCustomAlert = showCustomAlert;
+</script>
+</body>
+</html>
